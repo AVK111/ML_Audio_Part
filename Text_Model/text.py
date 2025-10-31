@@ -1,81 +1,122 @@
-# Import libraries
-import pandas as pd
-import numpy as np
+import os
 import re
 import string
+import joblib
+import pandas as pd
+from sklearn.svm import SVC
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, accuracy_score, confusion_matrix
-from imblearn.over_sampling import SMOTE
-from sklearn.pipeline import Pipeline
-from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score, classification_report
 
-# Load dataset
-data = pd.read_csv(r"tweet_emotions.csv")
 
-print("Columns in dataset:", data.columns)
-print(data.head())
-
-# Rename columns if necessary
-data.rename(columns={'content': 'text', 'sentiment': 'emotion'}, inplace=True)
-
-# Drop missing values
-data.dropna(inplace=True)
-
-# Text cleaning function
+# -----------------------------
+# 1️⃣ Text Cleaning Function
+# -----------------------------
 def clean_text(text):
     text = text.lower()
-    text = re.sub(r"http\S+", "", text)           # Remove URLs
-    text = re.sub(r"@\w+", "", text)              # Remove mentions
-    text = re.sub(r"#\w+", "", text)              # Remove hashtags
-    text = re.sub(r"[0-9]+", "", text)            # Remove numbers
-    text = re.sub(r"[^\w\s]", "", text)           # Remove punctuation
-    text = text.strip()
+    text = re.sub(r"http\S+|www\S+|https\S+", '', text)
+    text = re.sub(r'\@[\w]+', '', text)
+    text = re.sub(r'\#[\w]+', '', text)
+    text = re.sub(r'[0-9]+', '', text)
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    text = re.sub(r'\s+', ' ', text).strip()
     return text
 
-data['clean_text'] = data['text'].apply(clean_text)
 
-# Train-test split
-X = data['clean_text']
-y = data['emotion']
+# -----------------------------
+# 2️⃣ Train Model (only if not saved)
+# -----------------------------
+model_path = os.path.join(os.path.dirname(__file__), "text_emotion_svc.pkl")
+vectorizer_path = os.path.join(os.path.dirname(__file__), "tfidf_vectorizer.pkl")
+encoder_path = os.path.join(os.path.dirname(__file__), "label_encoder.pkl")
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+if not (os.path.exists(model_path) and os.path.exists(vectorizer_path) and os.path.exists(encoder_path)):
+    print("🚀 Training new Text Emotion Model...")
+    data = pd.read_csv(os.path.join(os.path.dirname(__file__), "tweet_emotions.csv"))
+    data = data[['sentiment', 'content']].dropna()
+    data['clean_content'] = data['content'].apply(clean_text)
 
-# TF-IDF Vectorizer
-tfidf = TfidfVectorizer(max_features=5000, ngram_range=(1,2))
+    encoder = LabelEncoder()
+    y = encoder.fit_transform(data['sentiment'])
 
-# Apply SMOTE for class balance
-X_tfidf = tfidf.fit_transform(X_train)
-smote = SMOTE(random_state=42)
-X_res, y_res = smote.fit_resample(X_tfidf, y_train)
+    vectorizer = TfidfVectorizer(max_features=5000, stop_words='english')
+    X = vectorizer.fit_transform(data['clean_content'])
 
-# Logistic Regression model
-model = LogisticRegression(max_iter=200, solver='saga', class_weight='balanced')
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    model = SVC(kernel='linear', C=1)
+    model.fit(X_train, y_train)
 
-# Hyperparameter tuning with GridSearchCV
-param_grid = {
-    'C': [0.1, 1, 10],
-    'penalty': ['l2'],
-}
-grid = GridSearchCV(model, param_grid, cv=3, scoring='accuracy', n_jobs=-1)
-grid.fit(X_res, y_res)
+    y_pred = model.predict(X_test)
+    print("✅ Accuracy:", accuracy_score(y_test, y_pred) * 100)
+    print("\n📊 Classification Report:\n", classification_report(y_test, y_pred, target_names=encoder.classes_))
 
-best_model = grid.best_estimator_
-print("\n✅ Best parameters found:", grid.best_params_)
+    # Save all components
+    joblib.dump(model, model_path)
+    joblib.dump(vectorizer, vectorizer_path)
+    joblib.dump(encoder, encoder_path)
+else:
+    print("✅ Loading pre-trained Text Emotion Model...")
 
-# Evaluate model
-X_test_tfidf = tfidf.transform(X_test)
-y_pred = best_model.predict(X_test_tfidf)
+# -----------------------------
+# 3️⃣ Load Model Components
+# -----------------------------
+model = joblib.load(model_path)
+vectorizer = joblib.load(vectorizer_path)
+encoder = joblib.load(encoder_path)
 
-print("\n📊 Classification Report:")
-print(classification_report(y_test, y_pred))
 
-print("\n✅ Accuracy:", accuracy_score(y_test, y_pred) * 100, "%")
+# -----------------------------
+# 4️⃣ Helper Function
+# -----------------------------
+def get_stress_and_depression(emotion):
+    high_stress = ['anger', 'fear', 'sadness']
+    medium_stress = ['surprise', 'disgust']
+    low_stress = ['joy', 'love']
 
-# Save model and vectorizer
-import joblib
-joblib.dump(best_model, "text_emotion_model.pkl")
-joblib.dump(tfidf, "tfidf_vectorizer.pkl")
+    if emotion in high_stress:
+        return "High Stress", "Possible Depression Risk"
+    elif emotion in medium_stress:
+        return "Moderate Stress", "Monitor Mental State"
+    else:
+        return "Low Stress", "Stable Mental State"
 
-print("\n✅ Model and vectorizer saved successfully!")
+
+# -----------------------------
+# 5️⃣ Prediction Function
+# -----------------------------
+def predict_text_stress(user_input=None):
+    """
+    Predicts text emotion, stress level, depression risk, and numeric score.
+    Always returns a 4-tuple to avoid unpacking errors.
+    """
+    if user_input is None:
+        user_input = input("Enter your text (how are you feeling?): ")
+
+    try:
+        text_clean = clean_text(user_input)
+        text_vec = vectorizer.transform([text_clean])
+        emotion_pred = model.predict(text_vec)
+        emotion_label = encoder.inverse_transform(emotion_pred)[0]
+
+        stress_level, depression_risk = get_stress_and_depression(emotion_label)
+
+        print(f"\n💬 Input Text: {user_input}")
+        print(f"🪞 Predicted Emotion: {emotion_label}")
+        print(f"🧠 Stress Level: {stress_level}")
+        print(f"💭 Depression Indicator: {depression_risk}")
+
+        # Numeric score mapping
+        if stress_level == "High Stress":
+            score = 0.9
+        elif stress_level == "Moderate Stress":
+            score = 0.6
+        else:
+            score = 0.3
+
+        # ✅ Return 4 values
+        return emotion_label, stress_level, depression_risk, score
+
+    except Exception as e:
+        print("Text model error:", e)
+        return "Error", "Normal stress", "No major depression sign", 0.0
