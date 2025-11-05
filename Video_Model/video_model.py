@@ -13,7 +13,7 @@ class ImprovedStressDetector:
     """Improved stress detector that distinguishes smiles from stress and detects anger"""
     
     def __init__(self):
-        print("🚀 Initializing Improved Stress Detector...")
+        print(" Initializing Improved Stress Detector...")
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = None
         self.load_predictor()
@@ -54,21 +54,21 @@ class ImprovedStressDetector:
         predictor_path = "shape_predictor_68_face_landmarks.dat"
         
         if not os.path.exists(predictor_path):
-            print("📥 Downloading facial landmark model (99.7 MB)...")
+            print(" Downloading facial landmark model (99.7 MB)...")
             url = "http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2"
             try:
                 urllib.request.urlretrieve(url, predictor_path + ".bz2")
-                print("📦 Extracting...")
+                print(" Extracting...")
                 with bz2.BZ2File(predictor_path + ".bz2", 'rb') as fr:
                     with open(predictor_path, 'wb') as fw:
                         fw.write(fr.read())
                 os.remove(predictor_path + ".bz2")
             except Exception as e:
-                print(f"❌ Download failed: {e}")
+                print(f" Download failed: {e}")
                 raise
         
         self.predictor = dlib.shape_predictor(predictor_path)
-        print("✅ Model loaded!")
+        print(" Model loaded!")
     
     def get_ear(self, eye):
         """Calculate Eye Aspect Ratio"""
@@ -260,7 +260,7 @@ class ImprovedStressDetector:
         else:
             self.calibrated = True
             
-            # ✅ IMPROVED STRESS CALCULATION with ANGER detection
+            # IMPROVED STRESS CALCULATION with ANGER detection
             stress_indicators = []
             
             # CRITICAL: If angry, high stress regardless of other factors
@@ -328,58 +328,31 @@ class ImprovedStressDetector:
             'landmarks': landmarks
         }
     
-    def calculate_accuracy(self):
-        """Calculate accuracy metrics"""
-        if len(self.ground_truth) == 0:
-            return None
-        
-        from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
-        
-        accuracy = accuracy_score(self.ground_truth, self.predictions)
-        precision = precision_score(self.ground_truth, self.predictions, zero_division=0)
-        recall = recall_score(self.ground_truth, self.predictions, zero_division=0)
-        f1 = f1_score(self.ground_truth, self.predictions, zero_division=0)
-        cm = confusion_matrix(self.ground_truth, self.predictions)
-        
-        report = classification_report(self.ground_truth, self.predictions, 
-                                       target_names=['Normal', 'Stressed'],
-                                       zero_division=0)
-        
-        return {
-            'accuracy': accuracy,
-            'precision': precision,
-            'recall': recall,
-            'f1_score': f1,
-            'confusion_matrix': cm,
-            'classification_report': report
-        }
-
-
 def run_improved_detection(duration_seconds=20, test_mode=False, show_display=True):
     """Run improved stress detection"""
     
     print("\n" + "="*70)
-    print("🎥 IMPROVED VIDEO STRESS DETECTION (Smile & Anger Aware)")
+    print(" IMPROVED VIDEO STRESS DETECTION (Smile & Anger Aware)")
     if test_mode:
-        print("🧪 TEST MODE: Press 's' for stressed, 'n' for normal")
+        print(" TEST MODE: Press 's' for stressed, 'n' for normal")
     print("="*70)
     
     detector = ImprovedStressDetector()
     cap = cv2.VideoCapture(0)
     
     if not cap.isOpened():
-        print("❌ Camera not accessible!")
+        print(" Camera not accessible!")
         return 0.0, "Unknown"
     
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
     
-    print(f"\n📹 Recording for {duration_seconds} seconds...")
-    print("👤 Look at the camera naturally")
+    print(f"\n Recording for {duration_seconds} seconds...")
+    print(" Look at the camera naturally")
     print("😊 Try smiling - it should NOT increase stress!")
     print("😠 Try looking angry - it SHOULD increase stress!")
     if test_mode:
-        print("⌨️  Press 's' for stressed, 'n' for normal during recording")
+        print("  Press 's' for stressed, 'n' for normal during recording")
     print()
     
     stress_values = []
@@ -411,7 +384,7 @@ def run_improved_detection(duration_seconds=20, test_mode=False, show_display=Tr
                     h, w = frame.shape[:2]
                     
                     # Status
-                    status = "🔧 Calibrating..." if not result['calibrated'] else "✅ Detecting"
+                    status = " Calibrating..." if not result['calibrated'] else "✅ Detecting"
                     cv2.putText(frame, status, (10, 30), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                     
@@ -471,11 +444,11 @@ def run_improved_detection(duration_seconds=20, test_mode=False, show_display=Tr
                 
                 except cv2.error:
                     show_display = False
-                    print("⚠️  GUI not available, continuing without display...")
+                    print("  GUI not available, continuing without display...")
             
             # Print status every 2 seconds
             if time.time() - last_print_time > 2:
-                status = "🔧 Calibrating..." if not result['calibrated'] else "✅ Detecting"
+                status = " Calibrating..." if not result['calibrated'] else "✅ Detecting"
                 smile_ind = "😊" if result['is_smiling'] else "  "
                 anger_ind = "😠" if result['is_angry'] else "  "
                 print(f"{status} {smile_ind}{anger_ind} | Stress: {result['stress_level']:8s} ({result['stress_score']:3.0f}) | "
@@ -493,39 +466,39 @@ def run_improved_detection(duration_seconds=20, test_mode=False, show_display=Tr
     stress_level = "High" if avg_stress > 60 else "Moderate" if avg_stress > 30 else "Low"
     
     print("\n" + "="*70)
-    print("📊 FINAL RESULTS:")
+    print("FINAL RESULTS:")
     print("="*70)
     print(f"  Total frames processed: {frame_count}")
     print(f"  Total blinks detected:  {detector.blink_count}")
     print(f"  Rapid blinks detected:  {detector.rapid_blink_count}")
     print(f"  Average stress score:   {avg_stress:.2f}/100")
     print(f"  Stress level:           {stress_level}")
-    print(f"  Status:                 {'✅ CALIBRATED' if detector.calibrated else '⚠️ NOT CALIBRATED'}")
+    print(f"  Status:                 {' CALIBRATED' if detector.calibrated else '⚠️ NOT CALIBRATED'}")
     
     # Show accuracy metrics
-    if test_mode:
-        metrics = detector.calculate_accuracy()
-        if metrics:
-            print("\n" + "="*70)
-            print("📊 ACCURACY METRICS:")
-            print("="*70)
-            print(f"  Accuracy:  {metrics['accuracy']:.2%}")
-            print(f"  Precision: {metrics['precision']:.2%}")
-            print(f"  Recall:    {metrics['recall']:.2%}")
-            print(f"  F1-Score:  {metrics['f1_score']:.2%}")
+    # if test_mode:
+    #     metrics = detector.calculate_accuracy()
+    #     if metrics:
+    #         print("\n" + "="*70)
+    #         print(" ACCURACY METRICS:")
+    #         print("="*70)
+    #         print(f"  Accuracy:  {metrics['accuracy']:.2%}")
+    #         print(f"  Precision: {metrics['precision']:.2%}")
+    #         print(f"  Recall:    {metrics['recall']:.2%}")
+    #         print(f"  F1-Score:  {metrics['f1_score']:.2%}")
             
-            print("\n📋 CONFUSION MATRIX:")
-            cm = metrics['confusion_matrix']
-            print(f"                Predicted")
-            print(f"                Normal  Stressed")
-            print(f"  Actual Normal    {cm[0][0]:3d}     {cm[0][1]:3d}")
-            print(f"  Actual Stressed  {cm[1][0]:3d}     {cm[1][1]:3d}")
+    #         print("\nCONFUSION MATRIX:")
+    #         cm = metrics['confusion_matrix']
+    #         print(f"                Predicted")
+    #         print(f"                Normal  Stressed")
+    #         print(f"  Actual Normal    {cm[0][0]:3d}     {cm[0][1]:3d}")
+    #         print(f"  Actual Stressed  {cm[1][0]:3d}     {cm[1][1]:3d}")
             
-            print("\n📈 CLASSIFICATION REPORT:")
-            print(metrics['classification_report'])
-            print(f"  Total labeled samples: {len(detector.ground_truth)}")
-        else:
-            print("\n⚠️  No ground truth labels provided")
+    #         print("\n CLASSIFICATION REPORT:")
+    #         print(metrics['classification_report'])
+    #         print(f"  Total labeled samples: {len(detector.ground_truth)}")
+    #     else:
+    #         print("\n  No ground truth labels provided")
     
     print("="*70 + "\n")
     
@@ -536,7 +509,7 @@ if __name__ == "__main__":
     import sys
     
     test_mode = '--test' in sys.argv or '-t' in sys.argv
-    duration = 60
+    duration = 45
     
     for arg in sys.argv[1:]:
         if arg.isdigit():
@@ -545,8 +518,8 @@ if __name__ == "__main__":
     try:
         run_improved_detection(duration_seconds=duration, test_mode=test_mode)
     except KeyboardInterrupt:
-        print("\n⚠️ Stopped by user")
+        print("\n Stopped by user")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n Error: {e}")
         import traceback
         traceback.print_exc()
